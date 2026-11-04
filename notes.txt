@@ -140,7 +140,6 @@ Why we need MLFlow ?
 - Artifact - saved file produced by a run
 - Model Registry - Managed catalog of registered models and their versions
 
-
 Install MLFlow
 pip install mlflow
 
@@ -148,10 +147,34 @@ pip install mlflow
 Start MLFlow Tracking Server
 mlflow server \
 --backend-store-uri sqlite:///mlflow.db \
---host 0.0.0.0 \
+--host 127.0.0.1 \
 --port 6001
 
 Open browser and test URL:
-http://0.0.0.0:6001
+http://127.0.0.1:6001
+
+
+Evaluate and promote model vesions
+- Right now FastAPI application loads a model from a local file
+- This works for demo, but it becomes harder to manage when you have multiple model verions
+
+Example:
+Version-1: Initial model
+Version-2: retrained model
+Version-3: improved model
+
+We can assign the alias champion to the model version we want our application to use
+
+start a container :
+docker run -d\
+--name iris-ml-api-container\
+-p 8000:8000\
+
+
+Automatically build and publishh images to GHCR:
+GHCR: github Conatainer Registry
+
+pull request to main-tests run+ Build Image
+push to main-tests+build+publish
 
 

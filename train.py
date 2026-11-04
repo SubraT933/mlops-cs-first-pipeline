@@ -7,7 +7,6 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score
 
 import mlflow
 import mlflow.sklearn
-# Client API lets us manage registered models and their aliases
 from mlflow import MlflowClient
 
 # Configure MLFlow Tracking
@@ -17,36 +16,37 @@ mlflow.set_tracking_uri("http://127.0.0.1:6001")
 # Group related training runs under one experiment
 mlflow.set_experiment("iris-classification")
 
-
 iris = load_iris()
 X = iris.data
 y = iris.target
 
-X_train, X_test, y_train, y_test = train_test_split(X, 
-                                                    y, 
-                                                    test_size=0.80)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, 
+    y, 
+    test_size=0.2, 
+    random_state=42
+)
 
-
-n_estimators = 1
+n_estimators = 100
 random_state = 42
 
-# Model settings we want to track in MLFlow
 model_parameters = {
     "model_type": "RandomForestClassifier",
     "n_estimators": n_estimators,
     "random_state": random_state,
-    "test_size": 0.80
+    "test_size": 0.2
 }
 
 # Start a tracked training run
 with mlflow.start_run() as run:
-    # Record the training configuration before model fitting
+    # Record the training configurations before model fitting
     mlflow.log_params(model_parameters)
 
     # Build classifier using the selected parameters
     model = RandomForestClassifier(
-        n_estimators=n_estimators, 
-        random_state=random_state)
+        n_estimators=n_estimators,
+        random_state=random_state
+    )
 
     # Fit the model on training data
     model.fit(X_train, y_train)
@@ -59,6 +59,13 @@ with mlflow.start_run() as run:
     precision = precision_score(y_test, y_pred, average="macro", zero_division=0)
     recall = recall_score(y_test, y_pred, average="macro", zero_division=0)
 
+    # Quality Gate
+    MIN_TEST_ACCURACY = 0.90
+    if accuracy < MIN_TEST_ACCURACY:
+        raise ValueError(
+            f"Model rejected: test accuracy: {accuracy:.2f} is below {MIN_TEST_ACCURACY}"
+        )
+
     # Log the evaluated results so that different runs can be compared
     mlflow.log_metrics({
         "test_accuracy": accuracy,
@@ -68,9 +75,8 @@ with mlflow.start_run() as run:
 
     print("MLFlow run ID:", run.info.run_id)
     print("Test accuracy:", accuracy)
-    print("Test precision:",precision)
-    print("Test recall:",recall)
-
+    print("Test precision:", precision)
+    print("Test recall:", recall)
 
     # Save the trained model as reusable artifact
     model_dir = Path("models")
@@ -89,12 +95,13 @@ with mlflow.start_run() as run:
 
     # Assign the "champion" alias to the newly registered model
     client = MlflowClient()
-    # Identify the current training run
     current_run_id = mlflow.active_run().info.run_id
+
     # Retrieve all versions registered under this model name
     registered_versions = client.search_model_versions(
         "name='iris-classifier'"
     )
+
     # Find the version created by the training run
     current_model_version = next(
         (
@@ -118,9 +125,6 @@ with mlflow.start_run() as run:
     )
 
     print(
-        f"Champion alias assigned to model version"
-        f"{current_model_version.version}"
+        f"Champion alias assigned to model version: {current_model_version.version}"
     )
-
-
     print("Registered Model: iris-classifier")
